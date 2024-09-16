@@ -1,4 +1,5 @@
-
+// defines the schema for a GraphQL API using the typeDefs syntax. This schema outlines the data types, queries, 
+// and mutations that the API will support.
 
 const typeDefs = `
   type User {

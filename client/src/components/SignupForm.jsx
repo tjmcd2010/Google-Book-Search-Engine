@@ -1,6 +1,9 @@
+//* `SignupForm.jsx`: Replace the `addUser()` functionality imported from the `API` file with the `ADD_USER` mutation functionality.
+
 import { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useMutation } from '@apollo/client';
+import { gql } from '@apollo/client';
 import { ADD_USER } from '../utils/mutations';
 import Auth from '../utils/auth';
 
@@ -12,7 +15,8 @@ const SignupForm = () => {
   // set state for alert
   const [showAlert, setShowAlert] = useState(false);
 
-  const [addUser, { error, data }] = useMutation(ADD_USER);
+  // Use the useMutation Hook to get the addUser mutation function and the mutation result object
+  const [addUser, { error }] = useMutation(ADD_USER);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -21,7 +25,7 @@ const SignupForm = () => {
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
-    console.log(userFormData);
+
     // check if form has everything (as per react-bootstrap docs)
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
@@ -31,10 +35,12 @@ const SignupForm = () => {
 
     try {
       const { data } = await addUser({
-        variables: { ...userFormData } 
+        variables: { ...userFormData },
       });
 
-      Auth.login(data.addUser.token);
+      const { token, user } = data.addUser;
+      console.log(user);
+      Auth.login(token);
     } catch (err) {
       console.error(err);
       setShowAlert(true);
@@ -101,6 +107,7 @@ const SignupForm = () => {
           Submit
         </Button>
       </Form>
+      {error && <div>Error signing up: {error.message}</div>}
     </>
   );
 };
