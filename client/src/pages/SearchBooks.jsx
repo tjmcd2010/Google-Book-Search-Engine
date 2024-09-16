@@ -1,56 +1,51 @@
+//import dependencies and hooks for an application that allows users to search for books and save them to their account
+//using apollo client to make a mutation to save a book to the database
+
 import { useState, useEffect } from 'react';
-import {
-  Container,
-  Col,
-  Form,
-  Button,
-  Card,
-  Row
-} from 'react-bootstrap';
+import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
 import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
+import { SAVE_BOOK } from '../utils/mutations';
 import Auth from '../utils/auth';
 import { searchGoogleBooks } from '../utils/API';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 
-const SAVE_BOOK = gql`
-  mutation saveBook($book: BookInput!) {
-    saveBook(book: $book) {
-      _id
-      username
-      email
-      bookCount
-      savedBooks {
-        bookId
-        authors
-        description
-        title
-        image
-        link
-      }
-    }
-  }
-`;
+//creates a component that displays a book's description and allows the user to expand or collapse the description
+const BookDescription = ({ description, maxWords = 50 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const words = description.split(' ');
+  const truncatedWords = isExpanded ? words : words.slice(0, maxWords);
+  const truncatedDescription = truncatedWords.join(' ');
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <div>
+      <Card.Text>{truncatedDescription}</Card.Text>
+      {words.length > maxWords && (
+        <div className="mb-2">
+          <button onClick={toggleExpand}>
+            {isExpanded ? 'Read Less' : 'Read More'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+//creates a component that allows users to search for books and save them to their account
 const SearchBooks = () => {
-  // create state for holding returned google api data
   const [searchedBooks, setSearchedBooks] = useState([]);
-  // create state for holding our search field data
   const [searchInput, setSearchInput] = useState('');
-
-  // create state to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
+  const [saveBook, { error }] = useMutation(SAVE_BOOK);
+
   useEffect(() => {
     return () => saveBookIds(savedBookIds);
   });
 
-  // Use the useMutation Hook to get the saveBook mutation function and the mutation result object
-  const [saveBook, { error }] = useMutation(SAVE_BOOK);
-
-  // create method to search for books and set state on form submit
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
@@ -81,13 +76,10 @@ const SearchBooks = () => {
       console.error(err);
     }
   };
-
-  // create function to handle saving a book to our database
+//creates a function that saves a book to the database
   const handleSaveBook = async (bookId) => {
-    // find the book in `searchedBooks` state by the matching id
-    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
+    const bookData = searchedBooks.find((book) => book.bookId === bookId);
 
-    // get token
     const token = Auth.loggedIn() ? Auth.getToken() : null;
 
     if (!token) {
@@ -96,11 +88,10 @@ const SearchBooks = () => {
 
     try {
       const { data } = await saveBook({
-        variables: { book: { ...bookToSave } },
+        variables: { input: bookData },
       });
 
-      // if book successfully saves to user's account, save book id to state
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
+      setSavedBookIds([...savedBookIds, bookData.bookId]);
     } catch (err) {
       console.error(err);
     }
@@ -150,17 +141,19 @@ const SearchBooks = () => {
                   <Card.Body>
                     <Card.Title>{book.title}</Card.Title>
                     <p className='small'>Authors: {book.authors}</p>
-                    <Card.Text>{book.description}</Card.Text>
-                    {Auth.loggedIn() && (
-                      <Button
-                        disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}
-                        className='btn-block btn-info'
-                        onClick={() => handleSaveBook(book.bookId)}>
-                        {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
-                          ? 'This book has already been saved!'
-                          : 'Save this Book!'}
-                      </Button>
-                    )}
+                    <BookDescription description={book.description} maxWords={50} />
+                    <div className="d-flex flex-column align-items-stretch">
+                      {Auth.loggedIn() && (
+                        <Button
+                          disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}
+                          className='btn-block btn-info mt-2'
+                          onClick={() => handleSaveBook(book.bookId)}>
+                          {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
+                            ? 'This book has been saved!'
+                            : 'Save this Book!'}
+                        </Button>
+                      )}
+                    </div>
                   </Card.Body>
                 </Card>
               </Col>
@@ -168,7 +161,6 @@ const SearchBooks = () => {
           })}
         </Row>
       </Container>
-      {error && <div>Error saving book: {error.message}</div>}
     </>
   );
 };
