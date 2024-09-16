@@ -1,56 +1,23 @@
 import { useState, useEffect } from 'react';
-import {
-  Container,
-  Col,
-  Form,
-  Button,
-  Card,
-  Row
-} from 'react-bootstrap';
+import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
 import { useMutation } from '@apollo/client';
-import { gql } from '@apollo/client';
+import { SAVE_BOOK } from '../utils/mutations';
 import Auth from '../utils/auth';
 import { searchGoogleBooks } from '../utils/API';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 
-const SAVE_BOOK = gql`
-  mutation saveBook($book: BookInput!) {
-    saveBook(book: $book) {
-      _id
-      username
-      email
-      bookCount
-      savedBooks {
-        bookId
-        authors
-        description
-        title
-        image
-        link
-      }
-    }
-  }
-`;
-
 const SearchBooks = () => {
-  // create state for holding returned google api data
   const [searchedBooks, setSearchedBooks] = useState([]);
-  // create state for holding our search field data
   const [searchInput, setSearchInput] = useState('');
-
-  // create state to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
+  // Setup the SAVE_BOOK mutation using useMutation
+  const [saveBook, { error }] = useMutation(SAVE_BOOK);
+
   useEffect(() => {
     return () => saveBookIds(savedBookIds);
   });
 
-  // Use the useMutation Hook to get the saveBook mutation function and the mutation result object
-  const [saveBook, { error }] = useMutation(SAVE_BOOK);
-
-  // create method to search for books and set state on form submit
   const handleFormSubmit = async (event) => {
     event.preventDefault();
 
@@ -82,12 +49,9 @@ const SearchBooks = () => {
     }
   };
 
-  // create function to handle saving a book to our database
   const handleSaveBook = async (bookId) => {
-    // find the book in `searchedBooks` state by the matching id
-    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
+    const bookData = searchedBooks.find((book) => book.bookId === bookId);
 
-    // get token
     const token = Auth.loggedIn() ? Auth.getToken() : null;
 
     if (!token) {
@@ -96,11 +60,10 @@ const SearchBooks = () => {
 
     try {
       const { data } = await saveBook({
-        variables: { book: { ...bookToSave } },
+        variables: { input: bookData },
       });
 
-      // if book successfully saves to user's account, save book id to state
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
+      setSavedBookIds([...savedBookIds, bookData.bookId]);
     } catch (err) {
       console.error(err);
     }
@@ -168,7 +131,6 @@ const SearchBooks = () => {
           })}
         </Row>
       </Container>
-      {error && <div>Error saving book: {error.message}</div>}
     </>
   );
 };
