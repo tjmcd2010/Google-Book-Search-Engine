@@ -9,10 +9,11 @@ import Auth from '../utils/auth';
 import { searchGoogleBooks } from '../utils/API';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 
-//creates a component that displays a book's description and allows the user to expand or collapse the description
 const BookDescription = ({ description, maxWords = 50 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const words = description.split(' ');
+
+  // Check if description is defined before splitting
+  const words = description ? description.split(' ') : [];
   const truncatedWords = isExpanded ? words : words.slice(0, maxWords);
   const truncatedDescription = truncatedWords.join(' ');
 
@@ -33,6 +34,7 @@ const BookDescription = ({ description, maxWords = 50 }) => {
     </div>
   );
 };
+
 
 //creates a component that allows users to search for books and save them to their account
 const SearchBooks = () => {
@@ -136,7 +138,9 @@ const SearchBooks = () => {
               <Col md="4" key={book.bookId}>
                 <Card border='dark'>
                   {book.image ? (
-                    <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' />
+                    <a href={`https://books.google.com/books?id=${book.bookId}`} target="_blank" rel="noopener noreferrer">
+                      <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' />
+                    </a>
                   ) : null}
                   <Card.Body>
                     <Card.Title>{book.title}</Card.Title>
@@ -149,7 +153,7 @@ const SearchBooks = () => {
                           className='btn-block btn-info mt-2'
                           onClick={() => handleSaveBook(book.bookId)}>
                           {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
-                            ? 'This book has been saved!'
+                            ? 'This book has already been saved!'
                             : 'Save this Book!'}
                         </Button>
                       )}
