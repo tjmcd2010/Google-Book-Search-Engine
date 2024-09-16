@@ -1,43 +1,43 @@
 const { User } = require('../models');
-const { AuthenticationError } = require('apollo-server-express');
-const { signToken } = require('../utils/auth');
+const { signToken, AuthenticationError } = require('../utils/auth');
 
 const resolvers = {
   Query: {
     me: async (_, __, context) => {
       if (context.user) {
-        return User.findOne({ _id: context.user._id }).populate('savedBooks');
+        const populatedUser = await User.findOne({ _id: context.user._id }).populate('savedBooks');
+        return populatedUser;
       }
       throw new AuthenticationError('You need to be logged in!');
     },
   },
   Mutation: {
-    login: async (_, { email, password }) => {
+    addUser: async (_, { username, email, password }) => {
+      const newUser = await User.create({ username, email, password });
+      const token = signToken(newUser);
+      return { token, user: newUser };
+    },
+    loginUser: async (_, { email, password }) => {
       const user = await User.findOne({ email });
 
       if (!user) {
         throw new AuthenticationError('Invalid credentials');
       }
 
-      const correctPw = await user.isCorrectPassword(password);
+      const isCorrectPassword = await user.isCorrectPassword(password);
 
-      if (!correctPw) {
+      if (!isCorrectPassword) {
         throw new AuthenticationError('Invalid credentials');
       }
 
       const token = signToken(user);
       return { token, user };
     },
-    addUser: async (_, { username, email, password }) => {
-      const user = await User.create({ username, email, password });
-      const token = signToken(user);
-      return { token, user };
-    },
-    saveBook: async (_, { book }, context) => {
+    saveBook: async (_, { input }, context) => {
       if (context.user) {
         const updatedUser = await User.findByIdAndUpdate(
           { _id: context.user._id },
-          { $push: { savedBooks: book } },
+          { $addToSet: { savedBooks: input } },
           { new: true }
         ).populate('savedBooks');
 
@@ -61,3 +61,5 @@ const resolvers = {
     },
   },
 };
+
+module.exports = resolvers;
